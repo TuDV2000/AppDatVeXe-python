@@ -12,16 +12,16 @@ class User(AbstractUser):
 
 
 class VehicleType(models.Model):
-    name_type = models.CharField(max_length=200)
+    name_type = models.CharField(max_length=200, unique=True)
 
     def __str__(self):
         return self.name_type
 
 
 class Vehicle(models.Model):
-    name = models.CharField(max_length=255, blank=True)
     license_plate = models.CharField(max_length=50, unique=True)
     seat = models.IntegerField()
+    extra_charges = models.IntegerField(default=0)
     vehicle_type = models.ForeignKey(VehicleType, on_delete=models.SET_NULL
                                      , null=True, related_name='vehicles')
     tickets = models.ManyToManyField('Ticket', through='TicketDetail'
@@ -43,7 +43,7 @@ class Line(models.Model):
     start_point = models.ForeignKey(Point, on_delete=models.SET_NULL, null=True)
     end_point = models.ForeignKey(Point, on_delete=models.SET_NULL
                                   , null=True, related_name='lines')
-    price = models.DecimalField(max_digits=8, decimal_places=0, null=False)
+    extra_charges = models.IntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -56,6 +56,7 @@ class Trip(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     blank_seat = models.IntegerField()
+    price = models.DecimalField(max_digits=8, decimal_places=0, null=False, default=0)
     driver = models.ForeignKey(User, on_delete=models.SET_NULL
                                , null=True, related_name='driver')
 
@@ -64,7 +65,6 @@ class Trip(models.Model):
 
 
 class Ticket(models.Model):
-    name = models.CharField(max_length=255, blank=True)
     employee = models.ForeignKey(User, on_delete=models.SET_NULL
                                  , null=True, related_name='employee')
     customer = models.ForeignKey(User, on_delete=models.SET_NULL
@@ -73,13 +73,14 @@ class Ticket(models.Model):
                                  , null=True, related_name='trip')
 
     def __str__(self):
-        return self.name
+        return "Vé " + str(self.trip)
 
 
 class TicketDetail(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True)
     ticket = models.ForeignKey(Ticket, on_delete=models.SET_NULL, null=True)
     seat_position = models.CharField(max_length=2, null=False)
+    current_price = models.IntegerField(default=0)
     note = models.CharField(max_length=255, blank=True)
 
 

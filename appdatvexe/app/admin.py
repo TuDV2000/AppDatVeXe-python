@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import Group, Permission
 from django.utils.html import mark_safe
 from .models import *
 
@@ -27,12 +28,53 @@ class UsersAdmin(UserAdmin):
             )
 
 
+class VehicleTypeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name_type',]
+    search_fields = ['name_type']
+
+
+class VehicleAdmin(admin.ModelAdmin):
+    list_display = ['id', 'license_plate', 'seat'
+        , 'vehicle_type', 'extra_charges']
+    search_fields = ['seat']
+
+
+class PointAdmin(admin.ModelAdmin):
+    list_display = ['id', 'address']
+    search_fields = ['address']
+
+
+class LineAdmin(admin.ModelAdmin):
+    list_display = ['id', 'start_point', 'end_point'
+        , 'extra_charges']
+    search_fields = ['start_point', 'end_point', 'price']
+
+
+class TripAdmin(admin.ModelAdmin):
+    list_display = ['id', 'line', 'start_time'
+        , 'end_time', 'price', 'blank_seat', 'driver']
+    search_fields = []
+
+
+class TicketDetailInlineAdmin(admin.StackedInline):
+    model = TicketDetail
+    fk_name = 'ticket'
+
+
+class TicketAdmin(admin.ModelAdmin):
+    list_display = ['id', 'customer', 'employee', 'trip']
+    search_fields = []
+    inlines = [TicketDetailInlineAdmin,]
+
+
 admin_site = AppAdminSite(name="myadmin")
+admin_site.register(Group)
+admin_site.register(Permission)
 admin_site.register(User, UsersAdmin)
-admin_site.register(VehicleType)
-admin_site.register(Vehicle)
-admin_site.register(Point)
-admin_site.register(Line)
-admin_site.register(Trip)
-admin_site.register(Ticket)
+admin_site.register(VehicleType, VehicleTypeAdmin)
+admin_site.register(Vehicle, VehicleAdmin)
+admin_site.register(Point, PointAdmin)
+admin_site.register(Line, LineAdmin)
+admin_site.register(Trip, TripAdmin)
+admin_site.register(Ticket, TicketAdmin)
 admin_site.register(TicketDetail)
