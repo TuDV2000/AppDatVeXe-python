@@ -72,11 +72,10 @@ class UserViewSet(viewsets.GenericViewSet,
 
 
 class PointViewSet(viewsets.GenericViewSet,
-                   mixins.ListModelMixin,mixins.UpdateModelMixin):
+                   mixins.ListModelMixin):
     queryset = Point.objects.all()
     serializer_class = PointSerializer
     permission_classes = [permissions.IsAuthenticated, ]
-    def partial_update(self, request, *args, **kwargs):
 
     def list(self, request, *args, **kwargs):
         l = Point.objects.all()
