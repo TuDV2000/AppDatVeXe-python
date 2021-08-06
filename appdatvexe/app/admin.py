@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin,GroupAdmin
 from django.contrib.auth.models import Group, Permission
 from django.utils.html import mark_safe
 from .models import *
@@ -67,8 +67,17 @@ class TicketAdmin(admin.ModelAdmin):
     inlines = [TicketDetailInlineAdmin,]
 
 
+class UserInGroupAdmin(admin.StackedInline):
+    model = Group.user_set.through
+
+
+class CustomGroupAdmin(GroupAdmin):
+    list_display = ['name',]
+    inlines = [UserInGroupAdmin,]
+
+
 admin_site = AppAdminSite(name="myadmin")
-admin_site.register(Group)
+admin_site.register(Group, CustomGroupAdmin)
 admin_site.register(Permission)
 admin_site.register(User, UsersAdmin)
 admin_site.register(VehicleType, VehicleTypeAdmin)
