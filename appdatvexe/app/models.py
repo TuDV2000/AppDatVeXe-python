@@ -70,7 +70,7 @@ class Ticket(models.Model):
     customer = models.ForeignKey(User, on_delete=models.SET_NULL
                                  , null=True, related_name='customer')
     trip = models.ForeignKey(Trip, on_delete=models.SET_NULL
-                                 , null=True, related_name='trip')
+                                 , null=True, related_name='tickets')
 
     def __str__(self):
         return "Vé " + str(self.trip)
@@ -78,7 +78,8 @@ class Ticket(models.Model):
 
 class TicketDetail(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True)
-    ticket = models.ForeignKey(Ticket, on_delete=models.SET_NULL, null=True)
+    ticket = models.ForeignKey(Ticket, related_name="ticket_detail",
+                               on_delete=models.CASCADE)
     seat_position = models.CharField(max_length=2, null=False)
     current_price = models.IntegerField(default=0)
     note = models.CharField(max_length=255, blank=True)
