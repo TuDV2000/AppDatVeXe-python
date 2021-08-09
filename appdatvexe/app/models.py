@@ -26,6 +26,8 @@ class Vehicle(models.Model):
                                      , null=True, related_name='vehicles')
     tickets = models.ManyToManyField('Ticket', through='TicketDetail'
                                      , through_fields=('vehicle', 'ticket'))
+    driver = models.ForeignKey(User, on_delete=models.SET_NULL,
+                               null=True, related_name="vehicle")
 
     def __str__(self):
         return "Xe " + self.license_plate
@@ -40,9 +42,10 @@ class Point(models.Model):
 
 class Line(models.Model):
     name = models.CharField(max_length=255, blank=True)
-    start_point = models.ForeignKey(Point, on_delete=models.SET_NULL, null=True)
-    end_point = models.ForeignKey(Point, on_delete=models.SET_NULL
-                                  , null=True, related_name='lines')
+    start_point = models.ForeignKey(Point, on_delete=models.SET_NULL,
+                                    related_name="line_start", null=True)
+    end_point = models.ForeignKey(Point, on_delete=models.SET_NULL,
+                                  related_name='line_end', null=True)
     extra_charges = models.IntegerField(default=0)
 
     def __str__(self):
@@ -52,13 +55,13 @@ class Line(models.Model):
 class Trip(models.Model):
     name = models.CharField(max_length=255, blank=True)
     line = models.ForeignKey(Line, on_delete=models.SET_NULL
-                             , null=True, related_name='trips')
+                             , null=True, related_name='line_trips')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     blank_seat = models.IntegerField()
     price = models.DecimalField(max_digits=8, decimal_places=0, null=False, default=0)
     driver = models.ForeignKey(User, on_delete=models.SET_NULL
-                               , null=True, related_name='driver')
+                               , null=True, related_name='driver_trips')
 
     def __str__(self):
         return self.name
@@ -66,11 +69,11 @@ class Trip(models.Model):
 
 class Ticket(models.Model):
     employee = models.ForeignKey(User, on_delete=models.SET_NULL
-                                 , null=True, related_name='employee')
+                                 , null=True, related_name='employee_tickets')
     customer = models.ForeignKey(User, on_delete=models.SET_NULL
-                                 , null=True, related_name='customer')
+                                 , null=True, related_name='customer_tickets')
     trip = models.ForeignKey(Trip, on_delete=models.SET_NULL
-                                 , null=True, related_name='tickets')
+                                 , null=True, related_name='trip_tickets')
 
     def __str__(self):
         return "Vé " + str(self.trip)
@@ -83,5 +86,4 @@ class TicketDetail(models.Model):
     seat_position = models.CharField(max_length=2, null=False)
     current_price = models.IntegerField(default=0)
     note = models.CharField(max_length=255, blank=True)
-
 

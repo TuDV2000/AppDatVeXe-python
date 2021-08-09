@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import viewsets, permissions, status, generics, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,7 +18,7 @@ class UserViewSet(viewsets.GenericViewSet,
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     parser_classes = [MultiPartParser, ]
-    permission_classes = [permissions.IsAuthenticated, ]
+    # permission_classes = [permissions.IsAuthenticated, ]
 
     @action(methods=["GET"], detail=False,
             url_path="profile", name="profile")
@@ -55,6 +56,12 @@ class UserViewSet(viewsets.GenericViewSet,
 
         raise PermissionDenied
 
+    def create(self, request, *args, **kwargs):
+        if request.data.get("avatar"):
+            return super().create(request)
+
+        return Response(data={"Yêu cầu cung cấp hình ảnh của bạn !!"})
+
     @action(methods=['get'], detail=False,
             url_path="logout")
     def logout(self, request):
@@ -84,7 +91,8 @@ class UserViewSet(viewsets.GenericViewSet,
 
 class PointViewSet(viewsets.GenericViewSet,
                    mixins.ListModelMixin,
-                   mixins.UpdateModelMixin):
+                   mixins.UpdateModelMixin,
+                   mixins.DestroyModelMixin):
     queryset = Point.objects.all()
     serializer_class = PointSerializer
     permission_classes = [permissions.IsAuthenticated, ]
@@ -101,6 +109,12 @@ class PointViewSet(viewsets.GenericViewSet,
     def partial_update(self, request, *args, **kwargs):
         if request.user.has_perm("app.change_point"):
             return super().partial_update(request)
+
+        raise PermissionDenied
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_perm("app.delete_point"):
+            return super().destroy(request)
 
         raise PermissionDenied
 
@@ -128,9 +142,16 @@ class LineViewSet(viewsets.GenericViewSet,
 
         raise PermissionDenied
 
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_perm("app.delete_line"):
+            return super().destroy(request)
+
+        raise PermissionDenied
+
 
 class TripViewSet(viewsets.GenericViewSet,
-                  mixins.ListModelMixin):
+                  mixins.ListModelMixin,
+                  mixins.DestroyModelMixin):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
     permission_classes = [permissions.IsAuthenticated, ]
@@ -147,6 +168,12 @@ class TripViewSet(viewsets.GenericViewSet,
     def partial_update(self, request, *args, **kwargs):
         if request.user.has_perm("app.change_trip"):
             return super().partial_update(request)
+
+        raise PermissionDenied
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_perm("app.delete_trip"):
+            return super().destroy(request)
 
         raise PermissionDenied
 
@@ -179,8 +206,18 @@ class TicketViewSet(viewsets.GenericViewSet,
             return Response(data={"Loi"},
                             status=status.HTTP_400_BAD_REQUEST)
 
+    def destroy(self, request, *args, **kwargs):
+        if request.user.has_perm("app.delete_ticket"):
+            return super().destroy(request)
+
+        raise PermissionDenied
+
     def get_serializer_class(self):
         if self.action == "get_ticket_detail":
             return TicketDetailSerializer
 
         return super().get_serializer_class()
+
+
+
+

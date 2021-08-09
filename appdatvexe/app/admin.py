@@ -35,7 +35,7 @@ class VehicleTypeAdmin(admin.ModelAdmin):
 
 class VehicleAdmin(admin.ModelAdmin):
     list_display = ['id', 'license_plate', 'seat'
-        , 'vehicle_type', 'extra_charges']
+        , 'vehicle_type', 'extra_charges', 'driver']
     search_fields = ['seat']
 
 
