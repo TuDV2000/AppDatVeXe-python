@@ -11,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from .models import *
 from .serializers import *
+import datetime
 
 
 class UserViewSet(viewsets.GenericViewSet,
@@ -18,7 +19,7 @@ class UserViewSet(viewsets.GenericViewSet,
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     parser_classes = [MultiPartParser, ]
-    # permission_classes = [permissions.IsAuthenticated, ]
+    permission_classes = [permissions.IsAuthenticated, ]
 
     @action(methods=["GET"], detail=False,
             url_path="profile", name="profile")
@@ -151,7 +152,8 @@ class LineViewSet(viewsets.GenericViewSet,
 
 class TripViewSet(viewsets.GenericViewSet,
                   mixins.ListModelMixin,
-                  mixins.DestroyModelMixin):
+                  mixins.DestroyModelMixin,
+                  mixins.RetrieveModelMixin):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
     permission_classes = [permissions.IsAuthenticated, ]
@@ -177,11 +179,116 @@ class TripViewSet(viewsets.GenericViewSet,
 
         raise PermissionDenied
 
+    @action(methods=['post'], detail=True,
+            url_path="feedback")
+    def feedback(self, request, pk):
+        u = request.user
+        t = Trip.objects.get(pk=pk)
+
+        if u.has_perm("app.add_feedback"):
+            if request.data.get("content") == None:
+                return Response(data={"Lỗi !! Vui lòng nhập nội dung phản hồi"})
+            f = Feedback(user=u, trip=t, content=request.data.get("content"))
+            if f:
+                f.save()
+                return Response(FeedbackSerializer(f).data,
+                                status=status.HTTP_200_OK)
+            return Response(data={"Lỗi !! Không thể tạo phản hồi"})
+
+        raise PermissionDenied
+
+    @action(methods=['post'], detail=True
+            , url_path="book-ticket")
+    def book_ticket(self, request, pk):
+        trip = Trip.objects.get(pk=pk)
+        if trip:
+            if trip.blank_seat > 0:
+                trip.blank_seat -= 1
+                vehicle = trip.driver.vehicle.all()[0]
+                ticket = Ticket(customer=request.user, trip=trip)
+                ticket.save()
+
+                seat_position = vehicle.seat - trip.blank_seat
+                current_price = trip.price + trip.line.extra_charges + vehicle.extra_charges
+                TicketDetail.objects.create(vehicle=vehicle, ticket=ticket, seat_position=seat_position
+                                            , current_price=current_price
+                                            , note="Vui lòng đến trước giờ bắt đầu 15' !!")
+                trip.save()
+                return Response(TicketSerializer(ticket).data
+                                , status=status.HTTP_200_OK)
+            else:
+                return Response(data={"Chuyến xe đã hết chổ. Vui lòng đợi chuyến xe."})
+        return Response(data={"Lỗi !! Không thể lấy được chuyến đi này."})
+
+    @action(methods=['post'], detail=True
+        , url_path="sell-ticket")
+    def sell_ticket(self, request, pk):
+        u = request.user
+        try:
+            if u.groups.get(name="employee"):
+                trip = Trip.objects.get(pk=pk)
+                if trip:
+                    if trip.blank_seat > 0:
+                        trip.blank_seat -= 1
+                        vehicle = trip.driver.vehicle.all()[0]
+                        ticket = Ticket(customer=u, trip=trip)
+                        ticket.save()
+
+                        seat_position = vehicle.seat - trip.blank_seat
+                        current_price = trip.price + trip.line.extra_charges + vehicle.extra_charges
+                        TicketDetail.objects.create(vehicle=vehicle, ticket=ticket, seat_position=seat_position
+                                                    , current_price=current_price
+                                                    , note="Vui lòng đến trước giờ bắt đầu 15' !!")
+                        trip.save()
+                        return Response(TicketSerializer(ticket).data
+                                        , status=status.HTTP_200_OK)
+                    else:
+                        return Response(data={"Chuyến xe đã hết chổ."})
+                return Response(data={"Lỗi !! Không thể lấy được chuyến đi này."})
+        except Group.DoesNotExist:
+            return Response(data={"Bạn không được phép ở đây !!"})
+
+    @action(methods=['post'], detail=False
+            ,url_path="search-by-time")
+    def search_by_time(self, request):
+        d, m, y = int(request.data.get('day')), int(request.data.get('month')), int(request.data.get('year'))
+        if d and m and y:
+            trips = list(Trip.objects.filter(start_time__date=datetime.datetime(y, m, d)))
+            if trips:
+                return Response(TripSerializer(trips, many=True).data, status=status.HTTP_200_OK)
+
+            return Response(data={"Lỗi !!! không lấy được trips."})
+
+        return Response(data={"Lỗi !!! không lấy được ngày tháng năm."})
+
+    @action(methods=['post'], detail=False
+        , url_path="search-by-point")
+    def search_by_point(self, request):
+        start_point = request.data.get("start_point")
+        end_point = request.data.get("end_point")
+        if start_point:
+            if end_point:
+                trips = Trip.objects.filter(line__start_point__address=start_point, line__end_point__address=end_point)
+                if trips:
+                    return Response(TripSerializer(trips, many=True).data, status=status.HTTP_200_OK)
+
+                return Response(data={"Lỗi !!! không lấy được trips."})
+
+            return Response(data={"Lỗi !!! không lấy được điểm đến."})
+        return Response(data={"Lỗi !!! không lấy được điểm đi."})
+
+    def get_serializer_class(self):
+        if self.action == "book_ticket":
+            return TicketSerializer
+
+        return super().get_serializer_class()
+
 
 class TicketViewSet(viewsets.GenericViewSet,
                     mixins.ListModelMixin,
                     mixins.RetrieveModelMixin,
-                    mixins.DestroyModelMixin):
+                    mixins.DestroyModelMixin,
+                    mixins.CreateModelMixin):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, ]
@@ -219,5 +326,9 @@ class TicketViewSet(viewsets.GenericViewSet,
         return super().get_serializer_class()
 
 
-
+class FeedbackViewSet(viewsets.GenericViewSet,
+                    mixins.ListModelMixin):
+    queryset = Feedback.objects.all()
+    serializer_class = FeedbackSerializer
+    permission_classes = [permissions.IsAuthenticated, ]
 

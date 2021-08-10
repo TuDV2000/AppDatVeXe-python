@@ -67,6 +67,11 @@ class TicketAdmin(admin.ModelAdmin):
     inlines = [TicketDetailInlineAdmin,]
 
 
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'trip']
+    search_fields = []
+
+
 class UserInGroupAdmin(admin.StackedInline):
     model = Group.user_set.through
 
@@ -85,5 +90,7 @@ admin_site.register(Vehicle, VehicleAdmin)
 admin_site.register(Point, PointAdmin)
 admin_site.register(Line, LineAdmin)
 admin_site.register(Trip, TripAdmin)
+admin_site.register(Feedback, FeedbackAdmin)
 admin_site.register(Ticket, TicketAdmin)
 admin_site.register(TicketDetail)
+

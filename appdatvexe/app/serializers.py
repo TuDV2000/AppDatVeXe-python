@@ -53,7 +53,7 @@ class TicketSerializer(ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['id', 'employee', 'customer',
-                  'trip']
+                  'trip', 'created_date']
 
 
 class TicketDetailSerializer(ModelSerializer):
@@ -61,3 +61,9 @@ class TicketDetailSerializer(ModelSerializer):
         model = TicketDetail
         fields = ['id', 'ticket', 'seat_position',
                   'current_price', 'note']
+
+
+class FeedbackSerializer(ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = ['id', 'user', 'trip', 'content']

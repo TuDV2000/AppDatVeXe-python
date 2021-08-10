@@ -22,12 +22,12 @@ class Vehicle(models.Model):
     license_plate = models.CharField(max_length=50, unique=True)
     seat = models.IntegerField()
     extra_charges = models.IntegerField(default=0)
-    vehicle_type = models.ForeignKey(VehicleType, on_delete=models.SET_NULL
-                                     , null=True, related_name='vehicles')
-    tickets = models.ManyToManyField('Ticket', through='TicketDetail'
-                                     , through_fields=('vehicle', 'ticket'))
+    vehicle_type = models.ForeignKey(VehicleType, on_delete=models.SET_NULL,
+                                     null=True, related_name='vehicles')
+    tickets = models.ManyToManyField('Ticket', through='TicketDetail',
+                                     through_fields=('vehicle', 'ticket'))
     driver = models.ForeignKey(User, on_delete=models.SET_NULL,
-                               null=True, related_name="vehicle")
+                               null=True, related_name="vehicle", unique=True)
 
     def __str__(self):
         return "Xe " + self.license_plate
@@ -54,26 +54,27 @@ class Line(models.Model):
 
 class Trip(models.Model):
     name = models.CharField(max_length=255, blank=True)
-    line = models.ForeignKey(Line, on_delete=models.SET_NULL
-                             , null=True, related_name='line_trips')
+    line = models.ForeignKey(Line, on_delete=models.SET_NULL, null=True,
+                             related_name='line_trips')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     blank_seat = models.IntegerField()
     price = models.DecimalField(max_digits=8, decimal_places=0, null=False, default=0)
-    driver = models.ForeignKey(User, on_delete=models.SET_NULL
-                               , null=True, related_name='driver_trips')
+    driver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                               related_name='driver_trips')
 
     def __str__(self):
         return self.name
 
 
 class Ticket(models.Model):
-    employee = models.ForeignKey(User, on_delete=models.SET_NULL
-                                 , null=True, related_name='employee_tickets')
-    customer = models.ForeignKey(User, on_delete=models.SET_NULL
-                                 , null=True, related_name='customer_tickets')
-    trip = models.ForeignKey(Trip, on_delete=models.SET_NULL
-                                 , null=True, related_name='trip_tickets')
+    employee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                 related_name='employee_tickets')
+    customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                 related_name='customer_tickets')
+    trip = models.ForeignKey(Trip, on_delete=models.SET_NULL, null=True,
+                             related_name='trip_tickets')
+    created_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return "Vé " + str(self.trip)
@@ -87,3 +88,13 @@ class TicketDetail(models.Model):
     current_price = models.IntegerField(default=0)
     note = models.CharField(max_length=255, blank=True)
 
+
+class Feedback(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                             related_name="feedback_user")
+    trip = models.ForeignKey(Trip, on_delete=models.SET_NULL, null=True,
+                             related_name="feedback_trip")
+    content = models.TextField()
+
+    def __str__(self):
+        return "Phản hồi " + self.trip.name + " của " + self.user.username
