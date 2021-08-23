@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'oauth2_provider',
     'drf_yasg',
+    'django_filters',
+    'cloudinary',
 ]
 
 MIDDLEWARE = [
@@ -138,3 +140,10 @@ MEDIA_ROOT = '%s/app/static/' % BASE_DIR
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Cloud upload imgae
+CLOUDINARY = dict(
+  cloud_name="dgkll0tqe",
+  api_key="489583527422224",
+  api_secret="KZfV8IcXH-U55SzzEAJQV3KTWvQ"
+)

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from cloudinary.models import CloudinaryField
 
 
 class User(AbstractUser):
@@ -8,7 +9,10 @@ class User(AbstractUser):
     address = models.CharField(max_length=255, null=True)
     identity_card = models.CharField(max_length=10, null=True)
     number_phone = models.CharField(max_length=10, null=True)
-    avatar = models.ImageField(upload_to="images/%Y/%m", null=True)
+    avatar = CloudinaryField(null=True)
+
+    def __str__(self):
+        return self.username
 
 
 class VehicleType(models.Model):
@@ -21,13 +25,14 @@ class VehicleType(models.Model):
 class Vehicle(models.Model):
     license_plate = models.CharField(max_length=50, unique=True)
     seat = models.IntegerField()
-    extra_charges = models.IntegerField(default=0)
+    extra_changes = models.IntegerField(default=0)
     vehicle_type = models.ForeignKey(VehicleType, on_delete=models.SET_NULL,
                                      null=True, related_name='vehicles')
     tickets = models.ManyToManyField('Ticket', through='TicketDetail',
                                      through_fields=('vehicle', 'ticket'))
     driver = models.ForeignKey(User, on_delete=models.SET_NULL,
                                null=True, related_name="vehicle", unique=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return "Xe " + self.license_plate
@@ -35,18 +40,23 @@ class Vehicle(models.Model):
 
 class Point(models.Model):
     address = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.address
 
 
 class Line(models.Model):
+    class Meta:
+        unique_together = ['start_point', 'end_point', ]
+
     name = models.CharField(max_length=255, blank=True)
     start_point = models.ForeignKey(Point, on_delete=models.SET_NULL,
                                     related_name="line_start", null=True)
     end_point = models.ForeignKey(Point, on_delete=models.SET_NULL,
                                   related_name='line_end', null=True)
-    extra_charges = models.IntegerField(default=0)
+    price = models.DecimalField(max_digits=8, decimal_places=0, null=False, default=0)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -59,12 +69,14 @@ class Trip(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     blank_seat = models.IntegerField()
-    price = models.DecimalField(max_digits=8, decimal_places=0, null=False, default=0)
+    extra_changes = models.DecimalField(max_digits=8, decimal_places=0, null=False, default=0)
     driver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                related_name='driver_trips')
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.name
+        return "{} ngày {}-{}-{}".format(self.name, self.start_time.day
+                                         , self.start_time.month, self.start_time.year)
 
 
 class Ticket(models.Model):
@@ -77,7 +89,7 @@ class Ticket(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return "Vé " + str(self.trip)
+        return "Vé {}".format(self.trip)
 
 
 class TicketDetail(models.Model):
@@ -90,6 +102,9 @@ class TicketDetail(models.Model):
 
 
 class Feedback(models.Model):
+    class Meta:
+        unique_together = ['user', 'trip', ]
+
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                              related_name="feedback_user")
     trip = models.ForeignKey(Trip, on_delete=models.SET_NULL, null=True,
@@ -97,4 +112,4 @@ class Feedback(models.Model):
     content = models.TextField()
 
     def __str__(self):
-        return "Phản hồi " + self.trip.name + " của " + self.user.username
+        return "Phản hồi về {} của user {}".format(self.trip, self.user)

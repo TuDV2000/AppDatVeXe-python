@@ -24,7 +24,7 @@ class UsersAdmin(UserAdmin):
     def show_avatar(self, user):
         if user:
             return mark_safe(
-                '<img src="/static/{url}" width="120" />'.format(url=user.avatar.name)
+                '<img src="{url}" width="120" />'.format(url=user.avatar.url)
             )
 
 
@@ -35,7 +35,7 @@ class VehicleTypeAdmin(admin.ModelAdmin):
 
 class VehicleAdmin(admin.ModelAdmin):
     list_display = ['id', 'license_plate', 'seat'
-        , 'vehicle_type', 'extra_charges', 'driver']
+        , 'vehicle_type', 'extra_changes', 'driver']
     search_fields = ['seat']
 
 
@@ -46,13 +46,19 @@ class PointAdmin(admin.ModelAdmin):
 
 class LineAdmin(admin.ModelAdmin):
     list_display = ['id', 'start_point', 'end_point'
-        , 'extra_charges']
+        , 'price']
     search_fields = ['start_point', 'end_point', 'price']
 
 
 class TripAdmin(admin.ModelAdmin):
     list_display = ['id', 'line', 'start_time'
-        , 'end_time', 'price', 'blank_seat', 'driver']
+        , 'end_time', 'extra_changes', 'blank_seat', 'driver']
+    search_fields = []
+
+
+class TicketDetailAdmin(admin.ModelAdmin):
+    list_display = ['id', 'seat_position', 'current_price'
+        , 'vehicle', 'ticket']
     search_fields = []
 
 
@@ -92,5 +98,5 @@ admin_site.register(Line, LineAdmin)
 admin_site.register(Trip, TripAdmin)
 admin_site.register(Feedback, FeedbackAdmin)
 admin_site.register(Ticket, TicketAdmin)
-admin_site.register(TicketDetail)
+admin_site.register(TicketDetail, TicketDetailAdmin)
 
