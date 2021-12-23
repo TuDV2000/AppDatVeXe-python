@@ -8,7 +8,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from rest_framework.exceptions import PermissionDenied
-from django.contrib.auth import logout
+from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.models import Group, User, Permission
 from django.contrib.contenttypes.models import ContentType
 
@@ -96,13 +96,14 @@ class UserViewSet(viewsets.GenericViewSet,
 
 class PointViewSet(viewsets.GenericViewSet,
                    mixins.ListModelMixin,
-                   mixins.UpdateModelMixin,
-                   mixins.CreateModelMixin,
-                   mixins.DestroyModelMixin):
+                   # mixins.UpdateModelMixin,
+                   # mixins.CreateModelMixin,
+                   # mixins.DestroyModelMixin
+                   ):
     queryset = Point.objects.filter(is_active=True)
     serializer_class = PointSerializer
     filter_backends = [SearchFilter]
-    permission_classes = [PointPermissions, ]
+    # permission_classes = [PointPermissions, ]
 
     #todo: destroy
 
