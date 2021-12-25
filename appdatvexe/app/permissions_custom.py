@@ -5,8 +5,7 @@ class PointPermissions(IsAuthenticated):
 
     def has_permission(self, request, view):
         return super(PointPermissions, self).has_permission(request, view) \
-               and request.user.has_perms(["app.view_point", "app.change_point"
-                                            , "app.delete_point", "app.add_point"])
+               and request.user.has_perms(["app.change_point", "app.delete_point", "app.add_point"])
 
 
 class LinePermissions(IsAuthenticated):
@@ -43,3 +42,4 @@ class EmployeeFeedbackPermissions(CustomerFeedbackPermissions):
     def has_permission(self, request, view):
         return super(EmployeeFeedbackPermissions, self).has_permission(request, view) \
                and request.user.groups.get(name="employee")
+

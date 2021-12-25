@@ -96,7 +96,7 @@ class TicketDetail(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True)
     ticket = models.ForeignKey(Ticket, related_name="ticket_detail",
                                on_delete=models.CASCADE)
-    seat_position = models.CharField(max_length=2, null=False)
+    seat_position = models.IntegerField(null=False)
     current_price = models.IntegerField(default=0)
     note = models.CharField(max_length=255, blank=True)
 

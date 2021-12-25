@@ -49,7 +49,7 @@ class UserViewSet(viewsets.GenericViewSet,
                 u.email = request.data.get("new_email")
             if request.data.get("new_address"):
                 u.address = request.data.get("new_address")
-            if request.data.get("new_number_pho ne"):
+            if request.data.get("new_number_phone"):
                 u.number_phone = request.data.get("new_number_phone")
             u.save()
 
@@ -96,33 +96,36 @@ class UserViewSet(viewsets.GenericViewSet,
 
 class PointViewSet(viewsets.GenericViewSet,
                    mixins.ListModelMixin,
-                   # mixins.UpdateModelMixin,
-                   # mixins.CreateModelMixin,
-                   # mixins.DestroyModelMixin
+                   mixins.UpdateModelMixin,
+                   mixins.CreateModelMixin,
+                   mixins.DestroyModelMixin
                    ):
     queryset = Point.objects.filter(is_active=True)
     serializer_class = PointSerializer
     filter_backends = [SearchFilter]
-    # permission_classes = [PointPermissions, ]
+    permission_classes = [PointPermissions]
 
-    #todo: destroy
+    # todo: Is done!
 
     search_fields = [
         'address',
     ]
 
+    def get_permissions(self):
+        if self.action == 'list':
+            return [permissions.AllowAny(), ]
+
+        return super(PointViewSet, self).get_permissions()
+
 
 class LineViewSet(viewsets.GenericViewSet,
                   mixins.ListModelMixin,
                   mixins.UpdateModelMixin,
-                  mixins.CreateModelMixin,
-                  mixins.DestroyModelMixin):
+                  mixins.CreateModelMixin):
     queryset = Line.objects.filter(is_active=True)
     serializer_class = LineSerializer
     filter_backends = [SearchFilter, DjangoFilterBackend, ]
     permission_classes = [LinePermissions, ]
-
-    # todo: destroy
 
     search_fields = [
         'start_point__address', 'end_point__address'
@@ -133,7 +136,7 @@ class LineViewSet(viewsets.GenericViewSet,
     ]
 
     def get_permissions(self):
-        if self.action in ['list']:
+        if self.action in ['list', 'get_trips_by_line']:
             return [permissions.AllowAny(), ]
 
         return super(LineViewSet, self).get_permissions()
@@ -141,6 +144,8 @@ class LineViewSet(viewsets.GenericViewSet,
     def get_serializer_class(self):
         if self.action == 'list':
             return LineSerializerView
+        if self.action == 'get_trips_by_line':
+            return TripSerializerView
 
         return LineSerializer
 
@@ -157,6 +162,37 @@ class LineViewSet(viewsets.GenericViewSet,
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(methods=['get'], detail=True,
+            url_path='trips')
+    def get_trips_by_line(self, request, pk):
+        line = self.get_object()
+        trips = Trip.objects.filter(line=line)
+        if trips:
+            return Response(TripSerializerView(trips, many=True).data,
+                            status=status.HTTP_200_OK)
+
+        return Response(data={"Tuyến này chưa có chuyến xe chạy"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['get'], detail=False, url_path="stats")
+    def stats(self, request):
+        try:
+            if request.user.groups.get(name="employee"):
+                data = {}
+                lines = Line.objects.all()
+                if lines:
+                    for l in lines:
+                        trips = Trip.objects.filter(line=l)
+                        count = 0
+                        for t in trips:
+                            tickets = Ticket.objects.filter(trip=t)
+                            count += len(tickets)
+                        data[str(l.pk)] = count
+                    return Response(data=data, status=status.HTTP_200_OK)
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except Group.DoesNotExist:
+            raise PermissionDenied
+
 
 class TripViewSet(viewsets.GenericViewSet,
                   mixins.ListModelMixin,
@@ -167,8 +203,6 @@ class TripViewSet(viewsets.GenericViewSet,
     serializer_class = TripSerializer
     filter_backends = [SearchFilter, DjangoFilterCustom]
     permission_classes = [TripPermissions, ]
-
-    # todo: destroy
 
     search_fields = [
         'line__end_point__address'
@@ -193,6 +227,8 @@ class TripViewSet(viewsets.GenericViewSet,
             return [permissions.AllowAny(), ]
         if self.action in ['book_ticket', 'sell_ticket']:
             return [TicketPermissions(), ]
+        if self.action in ['get_status_ticket_of_trip']:
+            return [permissions.AllowAny(), ]
 
         return super(TripViewSet, self).get_permissions()
 
@@ -272,6 +308,38 @@ class TripViewSet(viewsets.GenericViewSet,
         return Response(data={'Lỗi!! Không lấy được danh sách phản hồi của chuyến xe này'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+    @action(methods=['get'], detail=True,
+            url_path='tickets')
+    def get_status_ticket_of_trip(self, request, pk):
+        data = {}
+        trip = self.get_object()
+        tickets = trip.trip_tickets.all()
+        seat = trip.driver.vehicle.all()[0].seat
+        for i in range(1, seat + 1):
+            data[i] = "blank"
+
+        for t in tickets:
+            td = t.ticket_detail.all()[0]
+            if td:
+                data[td.seat_position] = "booked"
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], detail=False, url_path="stats")
+    def stats(self, request):
+        try:
+            if request.user.groups.get(name="employee"):
+                data = {}
+                trips = Trip.objects.all()
+                if trips:
+                    for t in trips:
+                        tickets = Ticket.objects.filter(trip=t)
+                        data[str(t.pk)] = len(tickets)
+                    return Response(data=data, status=status.HTTP_200_OK)
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except Group.DoesNotExist:
+            raise PermissionDenied
+
 
 class TicketViewSet(viewsets.GenericViewSet,
                     mixins.ListModelMixin,
@@ -291,8 +359,8 @@ class TicketViewSet(viewsets.GenericViewSet,
         return super(TicketViewSet, self).get_serializer_class()
 
     def get_permissions(self):
-        if self.action in ['retrieve', 'list']:
-            return [TicketPermissions(), ]
+        # if self.action in ['retrieve', 'list']:
+        #     return [TicketPermissions(), ]
         if self.action == 'feedback':
             return [CustomerFeedbackPermissions(), ]
 
@@ -369,6 +437,25 @@ class TicketViewSet(viewsets.GenericViewSet,
             raise PermissionDenied
         except utils.IntegrityError:
             return Response(data={"Lỗi !! Bạn đã phản hồi chuyến xe này."})
+
+    @action(methods=["get"], detail=False, url_path="stats/(?P<year>[0-9]+)")
+    def stats(self, request, year, **kwargs):
+        try:
+            if request.user.groups.get(name="employee"):
+                return Response(self.get_tickets_by_month_of_year(int(year)), status=status.HTTP_200_OK)
+        except Group.DoesNotExist:
+            raise PermissionDenied
+
+    def get_tickets_by_month_of_year(self, year=datetime.datetime.now().year):
+        if type(year) is int:
+            data = {}
+            month = [i.month for i in
+                          self.get_queryset().filter(created_date__year=year).dates("created_date", "month")]
+            for m in month:
+                data[str(m)] = self.get_queryset().filter(created_date__year=year
+                                                          , created_date__month=m).count()
+            return data
+        return {"data": []}
 
 
 class FeedbackViewSet(viewsets.GenericViewSet,
