@@ -120,6 +120,7 @@ class PointViewSet(viewsets.GenericViewSet,
 
 class LineViewSet(viewsets.GenericViewSet,
                   mixins.ListModelMixin,
+                  mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.CreateModelMixin):
     queryset = Line.objects.filter(is_active=True)
@@ -136,7 +137,7 @@ class LineViewSet(viewsets.GenericViewSet,
     ]
 
     def get_permissions(self):
-        if self.action in ['list', 'get_trips_by_line']:
+        if self.action in ['list', 'retrieve', 'get_trips_by_line']:
             return [permissions.AllowAny(), ]
 
         return super(LineViewSet, self).get_permissions()
