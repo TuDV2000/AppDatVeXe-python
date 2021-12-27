@@ -143,7 +143,7 @@ class LineViewSet(viewsets.GenericViewSet,
         return super(LineViewSet, self).get_permissions()
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action in ['list', 'retrieve']:
             return LineSerializerView
         if self.action == 'get_trips_by_line':
             return TripSerializerView
