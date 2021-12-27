@@ -25,6 +25,17 @@ class UserViewSet(viewsets.GenericViewSet,
     serializer_class = UserSerializer
     parser_classes = [MultiPartParser, ]
 
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.AllowAny()]
+
+        return [permissions.IsAuthenticated()]
+
+    @action(methods=['get'], detail=False, url_path="current-user")
+    def get_current_user(self, request):
+        return Response(self.serializer_class(request.user, context={"request": request}).data,
+                        status=status.HTTP_200_OK)
+
     def create(self, request, *args, **kwargs):
         if request.data.get("avatar"):
             return super().create(request)
@@ -92,6 +103,8 @@ class UserViewSet(viewsets.GenericViewSet,
         if request.auth:
             request.auth.revoke()
             return Response(status=status.HTTP_200_OK)
+
+
 
 
 class PointViewSet(viewsets.GenericViewSet,
