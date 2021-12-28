@@ -105,8 +105,6 @@ class UserViewSet(viewsets.GenericViewSet,
             return Response(status=status.HTTP_200_OK)
 
 
-
-
 class PointViewSet(viewsets.GenericViewSet,
                    mixins.ListModelMixin,
                    mixins.UpdateModelMixin,
@@ -260,8 +258,8 @@ class TripViewSet(viewsets.GenericViewSet,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(methods=['post'], detail=True
-            , url_path="book-ticket")
-    def book_ticket(self, request, pk):
+            , url_path="(?P<seat_position>[0-9]+)/book-ticket")
+    def book_ticket(self, request, pk, seat_position):
         trip = Trip.objects.get(pk=pk)
         if trip:
             if trip.blank_seat > 0:
@@ -270,7 +268,6 @@ class TripViewSet(viewsets.GenericViewSet,
                 ticket = Ticket(customer=request.user, trip=trip)
                 ticket.save()
 
-                seat_position = vehicle.seat - trip.blank_seat
                 current_price = trip.extra_changes + trip.line.price + vehicle.extra_changes
                 TicketDetail.objects.create(vehicle=vehicle, ticket=ticket, seat_position=seat_position
                                             , current_price=current_price
@@ -283,8 +280,8 @@ class TripViewSet(viewsets.GenericViewSet,
         return Response(data={"Lỗi !! Không thể lấy được chuyến đi này."})
 
     @action(methods=['post'], detail=True
-        , url_path="sell-ticket")
-    def sell_ticket(self, request, pk):
+            , url_path="(?P<seat_position>[0-9]+)/sell-ticket")
+    def sell_ticket(self, request, pk, seat_position):
         u = request.user
         try:
             if u.groups.get(name="employee"):
@@ -296,13 +293,12 @@ class TripViewSet(viewsets.GenericViewSet,
                         ticket = Ticket(customer=u, trip=trip)
                         ticket.save()
 
-                        seat_position = vehicle.seat - trip.blank_seat
                         current_price = trip.extra_changes + trip.line.price + vehicle.extra_changes
                         TicketDetail.objects.create(vehicle=vehicle, ticket=ticket, seat_position=seat_position
                                                     , current_price=current_price
                                                     , note="Vui lòng đến trước giờ bắt đầu 15' !!")
                         trip.save()
-                        return Response(TicketSerializer(ticket).data
+                        return Response(self.get_serializer(ticket).data
                                         , status=status.HTTP_200_OK)
                     else:
                         return Response(data={"Chuyến xe đã hết chổ."})
