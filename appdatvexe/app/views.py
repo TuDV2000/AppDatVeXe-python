@@ -104,6 +104,20 @@ class UserViewSet(viewsets.GenericViewSet,
             request.auth.revoke()
             return Response(status=status.HTTP_200_OK)
 
+    @action(methods=['get'], detail=False,
+            url_path="tickets")
+    def get_tickets_by_user(self, request):
+        u = request.user
+        tickets = None
+        print(u.groups.filter(name='customer'))
+        if u.groups.filter(name='customer'):
+            tickets = u.customer_tickets.all()
+        print(tickets)
+        if tickets:
+            return Response(TicketSerializerView(tickets, many=True).data, status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class PointViewSet(viewsets.GenericViewSet,
                    mixins.ListModelMixin,
@@ -150,6 +164,8 @@ class LineViewSet(viewsets.GenericViewSet,
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'get_trips_by_line']:
             return [permissions.AllowAny(), ]
+        if self.action in ['stats_trips_by_line']:
+            return [StatsPermissions(), ]
 
         return super(LineViewSet, self).get_permissions()
 
@@ -186,21 +202,19 @@ class LineViewSet(viewsets.GenericViewSet,
         return Response(data={"Tuyến này chưa có chuyến xe chạy"},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['get'], detail=False, url_path="stats")
-    def stats(self, request):
+    @action(methods=['get'], detail=False, url_path="stats-trips")
+    def stats_trips_by_line(self, request):
         try:
-            if request.user.groups.get(name="employee"):
+            if request.user.groups.get(name="admin"):
                 data = {}
                 lines = Line.objects.all()
+
                 if lines:
                     for l in lines:
                         trips = Trip.objects.filter(line=l)
-                        count = 0
-                        for t in trips:
-                            tickets = Ticket.objects.filter(trip=t)
-                            count += len(tickets)
-                        data[str(l.pk)] = count
+                        data[str(l.pk)] = len(trips)
                     return Response(data=data, status=status.HTTP_200_OK)
+
                 return Response(status=status.HTTP_400_BAD_REQUEST)
         except Group.DoesNotExist:
             raise PermissionDenied
@@ -235,12 +249,10 @@ class TripViewSet(viewsets.GenericViewSet,
         return super(TripViewSet, self).get_serializer_class()
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'get_status_ticket_of_trip']:
             return [permissions.AllowAny(), ]
         if self.action in ['book_ticket', 'sell_ticket']:
             return [TicketPermissions(), ]
-        if self.action in ['get_status_ticket_of_trip']:
-            return [permissions.AllowAny(), ]
 
         return super(TripViewSet, self).get_permissions()
 
@@ -258,8 +270,9 @@ class TripViewSet(viewsets.GenericViewSet,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(methods=['post'], detail=True
-            , url_path="(?P<seat_position>[0-9]+)/book-ticket")
-    def book_ticket(self, request, pk, seat_position):
+            , url_path="book-ticket")
+    def book_ticket(self, request, pk):
+        seat_position = request.data.get("seat_position")
         trip = Trip.objects.get(pk=pk)
         if trip:
             if trip.blank_seat > 0:
@@ -280,8 +293,9 @@ class TripViewSet(viewsets.GenericViewSet,
         return Response(data={"Lỗi !! Không thể lấy được chuyến đi này."})
 
     @action(methods=['post'], detail=True
-            , url_path="(?P<seat_position>[0-9]+)/sell-ticket")
-    def sell_ticket(self, request, pk, seat_position):
+            , url_path="sell-ticket")
+    def sell_ticket(self, request, pk):
+        seat_position = request.data.get("seat_position")
         u = request.user
         try:
             if u.groups.get(name="employee"):
@@ -335,21 +349,6 @@ class TripViewSet(viewsets.GenericViewSet,
 
         return Response(data, status=status.HTTP_200_OK)
 
-    @action(methods=['get'], detail=False, url_path="stats")
-    def stats(self, request):
-        try:
-            if request.user.groups.get(name="employee"):
-                data = {}
-                trips = Trip.objects.all()
-                if trips:
-                    for t in trips:
-                        tickets = Ticket.objects.filter(trip=t)
-                        data[str(t.pk)] = len(tickets)
-                    return Response(data=data, status=status.HTTP_200_OK)
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-        except Group.DoesNotExist:
-            raise PermissionDenied
-
 
 class TicketViewSet(viewsets.GenericViewSet,
                     mixins.ListModelMixin,
@@ -369,10 +368,12 @@ class TicketViewSet(viewsets.GenericViewSet,
         return super(TicketViewSet, self).get_serializer_class()
 
     def get_permissions(self):
-        # if self.action in ['retrieve', 'list']:
-        #     return [TicketPermissions(), ]
         if self.action == 'feedback':
             return [CustomerFeedbackPermissions(), ]
+        if self.action in ['stats_by_month', 'stats_by_quarter']:
+            return [StatsPermissions(), ]
+        if self.action in ['stats_by_quarter']:
+            return [permissions.AllowAny(), ]
 
         return super(TicketViewSet, self).get_permissions()
 
@@ -448,23 +449,53 @@ class TicketViewSet(viewsets.GenericViewSet,
         except utils.IntegrityError:
             return Response(data={"Lỗi !! Bạn đã phản hồi chuyến xe này."})
 
-    @action(methods=["get"], detail=False, url_path="stats/(?P<year>[0-9]+)")
-    def stats(self, request, year, **kwargs):
+    @action(methods=["get"], detail=False, url_path="stats-month/(?P<year>[0-9]+)")
+    def stats_by_month(self, request, year, **kwargs):
         try:
-            if request.user.groups.get(name="employee"):
-                return Response(self.get_tickets_by_month_of_year(int(year)), status=status.HTTP_200_OK)
+            if request.user.groups.get(name="admin"):
+                return Response(self.get_tickets_by_month(int(year)), status=status.HTTP_200_OK)
         except Group.DoesNotExist:
             raise PermissionDenied
 
-    def get_tickets_by_month_of_year(self, year=datetime.datetime.now().year):
+    @action(methods=["get"], detail=False, url_path="stats-quarter/(?P<year>[0-9]+)")
+    def stats_by_quarter(self, request, year, **kwargs):
+        try:
+            if request.user.groups.get(name="admin"):
+                return Response(self.get_turnover_by_quarter(int(year)), status=status.HTTP_200_OK)
+        except Group.DoesNotExist:
+            raise PermissionDenied
+
+    def get_turnover_by_month(self, year=datetime.datetime.now().year):
         if type(year) is int:
             data = {}
-            month = [i.month for i in
+            month = [t.month for t in
                           self.get_queryset().filter(created_date__year=year).dates("created_date", "month")]
             for m in month:
-                data[str(m)] = self.get_queryset().filter(created_date__year=year
-                                                          , created_date__month=m).count()
+                tickets = self.get_queryset().filter(created_date__year=year, created_date__month=m);
+                total = 0
+                for t in tickets:
+                    total += t.ticket_detail.all()[0].current_price
+                data[str(m)] = total;
             return data
+        return {"data": []}
+
+    def get_turnover_by_quarter(self, year=datetime.datetime.now().year):
+        if type(year) is int:
+            data = {}
+            quarter = 1
+            for i in range(1, 12, 3):
+                tickets = self.get_queryset().filter(created_date__year=year
+                                                     , created_date__month__gte=i
+                                                     , created_date__month__lte=i + 2);
+                total = 0
+                for t in tickets:
+                    total += t.ticket_detail.all()[0].current_price
+
+                data[quarter] = total
+                quarter += 1
+
+            return data
+
         return {"data": []}
 
 
