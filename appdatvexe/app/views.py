@@ -74,21 +74,16 @@ class UserViewSet(viewsets.GenericViewSet,
         u = request.user
 
         if u.has_perm("app.change_user"):
-            old_pass = request.data.get("old_pass")
             new_pass = request.data.get("new_pass")
             confirm = request.data.get("confirm")
-            if old_pass and new_pass and confirm:
-                if u.check_password(old_pass):
-                    if new_pass == confirm:
-                        u.set_password(new_pass)
-                        u.save()
-                        self.logout(request)
-                        return Response(status=status.HTTP_200_OK)
-                    else:
-                        return Response(data={"error": "Lỗi!! xác nhận mật khẩu không trùng khớp."},
-                                        status=status.HTTP_400_BAD_REQUEST)
+            if new_pass and confirm:
+                if new_pass == confirm:
+                    u.set_password(new_pass)
+                    u.save()
+                    self.logout(request)
+                    return Response(status=status.HTTP_200_OK)
                 else:
-                    return Response(data={"error": "Lỗi!! mật khẩu không đúng."},
+                    return Response(data={"error": "Lỗi!! xác nhận mật khẩu không trùng khớp."},
                                     status=status.HTTP_400_BAD_REQUEST)
 
             return Response(data={"error": "Lỗi!! Vui lòng nhập đầy đủ thông tin."},
