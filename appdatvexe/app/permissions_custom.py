@@ -43,3 +43,9 @@ class EmployeeFeedbackPermissions(CustomerFeedbackPermissions):
         return super(EmployeeFeedbackPermissions, self).has_permission(request, view) \
                and request.user.groups.get(name="employee")
 
+
+class StatsPermissions(IsAuthenticated):
+
+    def has_permission(self, request, view):
+        return super(StatsPermissions, self).has_permission(request, view) \
+               and request.user.has_perms(['app.stats'])
