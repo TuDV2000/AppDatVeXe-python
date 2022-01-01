@@ -48,7 +48,6 @@ const stats_month = async (year) => {
     let backgroundColor = data_month.map(i => random_bg_color())
     
     let datasets = {
-        label: label,
         data: data_month,
         backgroundColor: backgroundColor,
         borderColor: backgroundColor,
@@ -80,7 +79,6 @@ const stats_quarter = async (year) => {
     let backgroundColor = data_quarter.map(i => random_bg_color())
     
     let datasets = {
-        label: label,
         data: data_quarter,
         backgroundColor: backgroundColor,
         borderColor: backgroundColor,
