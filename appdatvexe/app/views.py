@@ -11,7 +11,6 @@ from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.models import Group, User, Permission
 from django.contrib.contenttypes.models import ContentType
-
 from .permissions_custom import *
 from .DjangoFilterCustom import DjangoFilterCustom
 from .models import *
@@ -27,6 +26,8 @@ class UserViewSet(viewsets.GenericViewSet,
 
     def get_permissions(self):
         if self.action == 'create':
+            return [permissions.AllowAny()]
+        if self.action == 'get_groups_by_user':
             return [permissions.AllowAny()]
 
         return [permissions.IsAuthenticated()]
@@ -112,6 +113,13 @@ class UserViewSet(viewsets.GenericViewSet,
             return Response(TicketSerializerView(tickets, many=True).data, status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(methods=['get'], detail=False,
+            url_path="get_groups")
+    def get_groups_by_user(self, request):
+        u = request.user
+
+        return Response(GroupSerializer(u.groups.all(), many=True).data, status=status.HTTP_200_OK)
 
 
 class PointViewSet(viewsets.GenericViewSet,
