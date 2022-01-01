@@ -3,17 +3,25 @@ from rest_framework.serializers import ModelSerializer, ImageField
 from .models import *
 
 
+class GroupSerializer(ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ['id', 'name']
+
+
 class UserSerializer(ModelSerializer):
     avatar = ImageField(required=True)
+    groups = GroupSerializer(many=True)
 
     class Meta:
         model = User
         fields = ['id', 'first_name', 'last_name',
                   'username', 'password', 'number_phone',
-                  'avatar']
+                  'avatar', 'groups']
         extra_kwargs = {
             'password': {'write_only': 'true'}
         }
+
 
     def create(self, validated_data):
         user = User(**validated_data)

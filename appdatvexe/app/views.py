@@ -299,7 +299,7 @@ class TripViewSet(viewsets.GenericViewSet,
                     if trip.blank_seat > 0:
                         trip.blank_seat -= 1
                         vehicle = trip.driver.vehicle.all()[0]
-                        ticket = Ticket(customer=u, trip=trip)
+                        ticket = Ticket(employee=u, trip=trip)
                         ticket.save()
 
                         current_price = trip.extra_changes + trip.line.price + vehicle.extra_changes
