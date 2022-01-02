@@ -123,17 +123,18 @@ class UserViewSet(viewsets.GenericViewSet,
             url_path="get_feedbacks/(?P<trip_id>[0-9]+)")
     def get_feedbacks_by_user(self, request, trip_id):
         u = request.user
-        trip = Trip.objects.get(pk=trip_id)
+        try:
+            trip = Trip.objects.get(pk=trip_id)
 
-        if trip:
-            feedbacks = trip.feedback_trip.filter(trip=trip, user=u)
-            print(feedbacks)
-            if feedbacks:
-                return Response(FeedbackSerializerView(feedbacks, many=True).data, status=status.HTTP_200_OK)
+            if trip:
+                feedbacks = trip.feedback_trip.filter(trip=trip, user=u)
 
-            return Response("Chưa có phản hồi cho chuyến xe này", status=status.HTTP_400_BAD_REQUEST)
+                if feedbacks:
+                    return Response(FeedbackSerializerView(feedbacks, many=True).data, status=status.HTTP_200_OK)
 
-        return Response("Không lấy được chuyến", status=status.HTTP_400_BAD_REQUEST)
+                return Response("Chưa có phản hồi cho chuyến xe này", status=status.HTTP_400_BAD_REQUEST)
+        except Trip.DoesNotExist:
+            return Response("Không lấy được chuyến", status=status.HTTP_400_BAD_REQUEST)
 
 
 class PointViewSet(viewsets.GenericViewSet,
